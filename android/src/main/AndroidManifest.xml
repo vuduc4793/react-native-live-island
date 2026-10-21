@@ -1,0 +1,16 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <!-- Only the generic permission. The app declares FOREGROUND_SERVICE_<TYPE> for the type it
+       actually uses (e.g. FOREGROUND_SERVICE_LOCATION), and SYSTEM_ALERT_WINDOW if it wants the floating island. -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+  <application>
+    <!-- Hosts the notification of an activity started with androidForegroundService, keeping the
+         process (and JS) alive in the background. stopWithTask=false so onTaskRemoved can clean up. -->
+    <service
+      android:name="com.liveisland.LiveIslandService"
+      android:exported="false"
+      android:stopWithTask="false"
+      android:foregroundServiceType="location|dataSync|mediaPlayback|connectedDevice|health|shortService" />
+  </application>
+</manifest>
