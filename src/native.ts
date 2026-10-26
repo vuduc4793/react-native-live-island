@@ -17,7 +17,16 @@ export interface NativeStartOptions {
   overlay?: boolean;
   /** Android: host the notification in a foreground service of this type (e.g. 'location') */
   foregroundService?: AndroidForegroundServiceType;
+  /** Android: 'standard' = system notification template only, no custom RemoteViews */
+  notificationStyle?: AndroidNotificationStyle;
 }
+
+/**
+ * Android notification look. 'auto' draws the template with custom views when this device can
+ * inflate them (checked before every post) and falls back to the standard template otherwise.
+ * 'standard' always uses the system template (title, text, chronometer, progress).
+ */
+export type AndroidNotificationStyle = 'auto' | 'standard';
 
 /** Android foreground service types the library's service can run as. */
 export type AndroidForegroundServiceType = 'location' | 'dataSync' | 'mediaPlayback' | 'connectedDevice' | 'health' | 'shortService';

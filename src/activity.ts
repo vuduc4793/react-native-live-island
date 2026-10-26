@@ -1,7 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { AppRegistry, Platform } from 'react-native';
 
-import { getNativeModule, type AndroidForegroundServiceType, type NativeActivityInfo } from './native';
+import {
+  getNativeModule,
+  type AndroidForegroundServiceType,
+  type AndroidNotificationStyle,
+  type NativeActivityInfo,
+} from './native';
+import type { NotificationHealth } from './specs/NativeLiveIsland';
 import type { TimeValue } from './primitives';
 import { islandStore } from './store';
 import { byteLength, encodePayload, IOS_PAYLOAD_LIMIT, renderTemplate, type LiveActivityTemplate } from './template';
@@ -16,6 +22,8 @@ export interface DynamicIslandConfig {
   push: boolean;
   /** how long the in-app island stays expanded after an update with `alert` (ms, 0 = don't expand). Default 4000 */
   alertExpandDuration: number;
+  /** Android notification look, see AndroidNotificationStyle. Default 'auto' */
+  androidNotificationStyle: AndroidNotificationStyle;
 }
 
 // Android: React Native pauses JS timers in the background unless a headless JS task is running.
@@ -25,7 +33,12 @@ if (Platform.OS === 'android') {
   AppRegistry.registerHeadlessTask('LiveIslandKeepAlive', () => () => new Promise<void>(() => {}));
 }
 
-const config: DynamicIslandConfig = { androidOverlay: false, push: false, alertExpandDuration: 4000 };
+const config: DynamicIslandConfig = {
+  androidOverlay: false,
+  push: false,
+  alertExpandDuration: 4000,
+  androidNotificationStyle: 'auto',
+};
 
 /** Global defaults, call once at startup. */
 export function configure(next: Partial<DynamicIslandConfig>) {
@@ -54,6 +67,8 @@ export interface StartOptions {
    * a granted location permission. Only one activity at a time can own the service.
    */
   androidForegroundService?: AndroidForegroundServiceType;
+  /** Android notification look for this activity. Defaults to configure({ androidNotificationStyle }) */
+  androidNotificationStyle?: AndroidNotificationStyle;
 }
 
 export interface UpdateOptions {
@@ -212,6 +227,7 @@ export function defineLiveActivity<D>(template: LiveActivityTemplate<D>): LiveAc
             push: options.push ?? config.push,
             overlay: options.androidOverlay ?? config.androidOverlay,
             foregroundService: options.androidForegroundService,
+            notificationStyle: options.androidNotificationStyle ?? config.androidNotificationStyle,
           });
           id = result.id;
           nativeOverlay = result.overlay;
@@ -282,6 +298,15 @@ export function getNativeActivities(): NativeActivityInfo[] {
 
 export function areActivitiesEnabled(): boolean {
   return getNativeModule()?.areActivitiesEnabled() ?? false;
+}
+
+/**
+ * Android: can this device show custom notification views? 'blocked' means the app was killed while
+ * posting one (some ROMs reject them) and foreground notifications now use the standard template
+ * until the app version changes. `reason` also explains the latest fallback. iOS: always 'allowed'.
+ */
+export function getAndroidNotificationHealth(): NotificationHealth {
+  return getNativeModule()?.getNotificationHealth() ?? { customViews: 'allowed' };
 }
 
 // --- Android permissions -------------------------------------------------------------------

@@ -24,6 +24,7 @@ export {
   defineLiveActivity,
   endAllActivities,
   getActivity,
+  getAndroidNotificationHealth,
   getNativeActivities,
   hasOverlayPermission,
   requestNotificationPermission,
@@ -31,6 +32,8 @@ export {
   useLiveActivity,
 } from './activity';
 export type { DynamicIslandConfig, EndOptions, LiveActivityDefinition, StartOptions, UpdateOptions } from './activity';
+export type { AndroidForegroundServiceType, AndroidNotificationStyle, NativeActivityInfo } from './native';
+export type { NotificationHealth } from './specs/NativeLiveIsland';
 
 export { renderTemplate } from './template';
 export type { LiveActivityTemplate, Region, TemplateStyle } from './template';

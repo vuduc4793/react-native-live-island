@@ -1,6 +1,6 @@
 {
   "name": "react-native-live-island",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Write-once Live Activities & Dynamic Island for React Native (pure TurboModule, no Expo): iOS ActivityKit + Android live notification / floating island",
   "main": "src/index.ts",
   "types": "src/index.ts",

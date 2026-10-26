@@ -98,6 +98,7 @@ class LiveIslandService : Service() {
     fun release(context: Context, id: String, keepNotification: Boolean) {
       if (hostedId != id) return
       hostedId = null
+      NotificationGuard.clearPending(context)
       val service = instance
       if (service != null) {
         ServiceCompat.stopForeground(
@@ -160,6 +161,7 @@ class LiveIslandService : Service() {
   /** App swiped away from Recents: end every activity so no notification outlives the app. */
   override fun onTaskRemoved(rootIntent: Intent?) {
     ActivityRegistry.endAll(applicationContext, "ended")
+    NotificationGuard.clearPending(applicationContext)
     hostedId = null
     ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
     stopSelf()

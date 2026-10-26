@@ -93,6 +93,12 @@ RCT_EXPORT_MODULE()
   return [_impl getActivities];
 }
 
+// Custom notification views are an Android concern; Live Activities are drawn by the widget.
+- (NSDictionary *)getNotificationHealth
+{
+  return @{@"customViews" : @"allowed"};
+}
+
 // Android-only features: the system draws the Dynamic Island on iOS.
 - (NSNumber *)hasOverlayPermission
 {

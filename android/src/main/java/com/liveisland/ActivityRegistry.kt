@@ -19,6 +19,8 @@ object ActivityRegistry {
     val overlayRequested: Boolean,
     /** ServiceInfo.FOREGROUND_SERVICE_TYPE_* to host the notification in LiveIslandService, 0 = plain notification */
     val foregroundType: Int = 0,
+    /** always use the standard notification template (no custom RemoteViews) */
+    val standardOnly: Boolean = false,
   ) {
     var state = "active"
   }

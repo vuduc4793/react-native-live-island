@@ -30,6 +30,19 @@ export type ActivityInfo = {
   state: string;
 };
 
+export type NotificationHealth = {
+  /**
+   * Android: 'blocked' once the app was killed while posting a custom (RemoteViews) foreground
+   * notification on this device; foreground notifications then use the standard template until the
+   * app version changes. iOS: always 'allowed'.
+   */
+  customViews: string;
+  /** epoch ms of the block */
+  blockedAt?: number | null;
+  /** why custom views were blocked, or why the last notification fell back to the standard template */
+  reason?: string | null;
+};
+
 export type StartResult = {
   id: string;
   /** Android: the floating island is showing this activity */
@@ -40,7 +53,8 @@ export interface Spec extends TurboModule {
   areActivitiesEnabled(): boolean;
   /**
    * options: { staleDate?: number; relevanceScore?: number; push?: boolean;
-   *            overlay?: boolean; foregroundService?: 'location' | 'dataSync' | ... }
+   *            overlay?: boolean; foregroundService?: 'location' | 'dataSync' | ...;
+   *            notificationStyle?: 'auto' | 'standard' }
    */
   startActivity(name: string, payload: string, options: CodegenTypes.UnsafeObject): Promise<StartResult>;
   /** options: { staleDate?: number; relevanceScore?: number; alert?: { title: string; body: string } } */
@@ -49,6 +63,9 @@ export interface Spec extends TurboModule {
   endActivity(id: string, payload: string | null, options: CodegenTypes.UnsafeObject): Promise<void>;
   endAllActivities(): Promise<void>;
   getActivities(): Array<ActivityInfo>;
+
+  /** Android: whether custom notification views are usable on this device (see NotificationHealth). */
+  getNotificationHealth(): NotificationHealth;
 
   /** Android only (iOS: false / no-op) */
   hasOverlayPermission(): boolean;

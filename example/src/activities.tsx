@@ -163,6 +163,60 @@ export const Run = defineLiveActivity<RunData>({
   style: { background: '#101012', textColor: '#ffffff', keyline: GREEN },
 });
 
+// --- Run with a goal (structure of a real run-tracking app: VStack root + goal bar) --------
+export type GoalRunData = {
+  phase: 'idle' | 'running' | 'paused';
+  startAt: number;
+  pausedText?: string;
+  distanceKm: number;
+  pace: string;
+  heartRate?: number;
+  goalKm?: number;
+};
+
+const goalKm = (d: GoalRunData) => (d.goalKm ? `${d.distanceKm.toFixed(2)} / ${d.goalKm} km` : `${d.distanceKm.toFixed(2)} km`);
+const goalBar = (d: GoalRunData) =>
+  d.goalKm ? <Progress value={Math.min(1, d.distanceKm / d.goalKm)} color={ORANGE} trackColor="#3a3a3c" /> : null;
+const goalTime = (d: GoalRunData, size: number, width: number) =>
+  d.phase === 'running' ? (
+    <Timer from={d.startAt} size={size} weight="bold" color={ORANGE} width={width} align="end" />
+  ) : (
+    <Text size={size} weight="bold" color={GRAY} monospacedDigits width={width} align="end">
+      {d.pausedText || '00:00'}
+    </Text>
+  );
+
+export const GoalRun = defineLiveActivity<GoalRunData>({
+  name: 'goal-run',
+  compact: {
+    leading: (d) => <Icon name={d.phase === 'running' ? 'run' : 'pause'} color={ORANGE} />,
+    trailing: (d) => (
+      <Text size={14} weight="semibold" color={ORANGE} monospacedDigits>
+        {goalKm(d)}
+      </Text>
+    ),
+  },
+  minimal: () => <Icon name="run" color={ORANGE} size={14} />,
+  lockScreen: (d) => (
+    <VStack>
+      <HStack>
+        <Icon name="run" color={ORANGE} size={24} />
+        <VStack align="start" fill>
+          <Text weight="semibold" lines={1}>
+            {d.phase === 'running' ? 'Đang chạy bộ' : d.phase === 'paused' ? 'Đang tạm dừng' : 'Sẵn sàng chạy bộ'}
+          </Text>
+          <Text size={13} color={GRAY} lines={1}>
+            {goalKm(d)} · {d.pace}/km{d.heartRate ? ` · ${d.heartRate} bpm` : ''}
+          </Text>
+        </VStack>
+        {goalTime(d, 26, 100)}
+      </HStack>
+      {goalBar(d)}
+    </VStack>
+  ),
+  style: { background: '#101012', textColor: '#ffffff', keyline: ORANGE },
+});
+
 // --- Upload / download progress -----------------------------------------------------------
 export type UploadData = { file: string; progress: number };
 

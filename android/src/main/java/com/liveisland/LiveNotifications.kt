@@ -11,6 +11,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -79,10 +80,6 @@ object LiveNotifications {
   fun build(context: Context, entry: ActivityRegistry.Entry): Notification {
     ensureChannel(context)
     val payload = entry.payload
-    val renderer = RemoteViewsRenderer(context, payload.textColor)
-    val collapsed = payload.nc?.let { renderer.root(it, payload.background) }
-      ?: renderer.compactRow(payload.cpLeading, payload.cpTrailing, payload.background)
-    val expanded = payload.ls?.let { renderer.root(it, payload.background) }
 
     val requestCode = notificationId(entry.id)
     val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -105,16 +102,48 @@ object LiveNotifications {
       .setShowWhen(false)
       .setCategory(NotificationCompat.CATEGORY_STATUS)
       .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-      .setStyle(NotificationCompat.DecoratedCustomViewStyle())
-      .setCustomContentView(collapsed)
       .setDeleteIntent(dismiss)
-    expanded?.let { builder.setCustomBigContentView(it) }
     content?.let { builder.setContentIntent(it) }
     (payload.keyline ?: payload.background)?.let { builder.setColor(it) }
-    if (entry.foregroundType != 0) {
+
+    // A foreground notification that SystemUI can't inflate kills the app, see NotificationGuard.
+    val foreground = entry.foregroundType != 0
+    val custom = when {
+      entry.standardOnly -> null
+      foreground && !NotificationGuard.customAllowed(context) -> {
+        NotificationGuard.fallback("custom views were disabled after a crash on this device")
+        null
+      }
+      else -> customViews(context, entry)
+    }
+    if (custom != null) {
+      builder.setStyle(NotificationCompat.DecoratedCustomViewStyle()).setCustomContentView(custom.first)
+      custom.second?.let { builder.setCustomBigContentView(it) }
+      if (foreground) NotificationGuard.arm(context)
+    } else {
+      StandardNotification.apply(builder, entry)
+    }
+    if (foreground) {
       builder.setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
     }
     return builder.build()
+  }
+
+  /** Collapsed + expanded RemoteViews, or null when rendering / inflating them fails on this device. */
+  private fun customViews(context: Context, entry: ActivityRegistry.Entry): Pair<RemoteViews, RemoteViews?>? {
+    val payload = entry.payload
+    return try {
+      val renderer = RemoteViewsRenderer(context, payload.textColor)
+      val collapsed = payload.nc?.let { renderer.root(it, payload.background) }
+        ?: renderer.compactRow(payload.cpLeading, payload.cpTrailing, payload.background)
+      val expanded = payload.ls?.let { renderer.root(it, payload.background) }
+      if (!NotificationGuard.inflates(context, collapsed, "collapsed view of '${entry.name}'")) return null
+      if (expanded != null && !NotificationGuard.inflates(context, expanded, "expanded view of '${entry.name}'")) return null
+      collapsed to expanded
+    } catch (e: Exception) {
+      NotificationGuard.fallback("rendering '${entry.name}' failed: ${e.message}")
+      null
+    }
   }
 
   fun cancel(context: Context, activityId: String) {

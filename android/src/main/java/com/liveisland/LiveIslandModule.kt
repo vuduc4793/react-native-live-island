@@ -15,6 +15,7 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.bridge.UiThreadUtil
 import com.facebook.react.bridge.WritableArray
+import com.facebook.react.bridge.WritableMap
 import com.facebook.react.jstasks.HeadlessJsTaskConfig
 import com.facebook.react.jstasks.HeadlessJsTaskContext
 import com.facebook.react.modules.core.PermissionAwareActivity
@@ -52,6 +53,7 @@ class LiveIslandModule(reactContext: ReactApplicationContext) : NativeLiveIsland
     LiveIslandService.onHostChanged = { id -> keepJsAlive(id != null) }
     val ctx = context
     UiThreadUtil.runOnUiThread {
+      NotificationGuard.checkPreviousRun(ctx)
       LiveNotifications.cancelOrphans(ctx)
       keepJsAlive(LiveIslandService.hostedId != null)
       LiveNotifications.registerDismissReceiver(ctx) { id ->
@@ -127,6 +129,7 @@ class LiveIslandModule(reactContext: ReactApplicationContext) : NativeLiveIsland
         payload = parsed,
         overlayRequested = options.bool("overlay"),
         foregroundType = LiveIslandService.typeOf(options.string("foregroundService")) ?: 0,
+        standardOnly = options.string("notificationStyle") == "standard",
       )
       ActivityRegistry.put(entry)
       // Post first: the service then takes over the same notification id, and if it can't start
@@ -230,6 +233,8 @@ class LiveIslandModule(reactContext: ReactApplicationContext) : NativeLiveIsland
       }
     }
   }
+
+  override fun getNotificationHealth(): WritableMap = Arguments.makeNativeMap(NotificationGuard.health(context))
 
   override fun iconImage(name: String, android: String?, size: Double, color: Double): String? {
     val ctx = context

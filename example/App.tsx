@@ -5,6 +5,7 @@ import {
   areActivitiesEnabled,
   DynamicIslandProvider,
   endAllActivities,
+  getAndroidNotificationHealth,
   getNativeActivities,
   hasOverlayPermission,
   LiveActivityPreview,
@@ -13,7 +14,7 @@ import {
   type LiveActivity,
 } from 'react-native-live-island';
 
-import { Delivery, NowPlaying, Run, Upload, type DeliveryData, type MusicData, type RunData, type UploadData } from './src/activities';
+import { Delivery, GoalRun, NowPlaying, Run, Upload, type DeliveryData, type MusicData, type RunData, type UploadData } from './src/activities';
 
 const minutes = (n: number) => new Date(Date.now() + n * 60_000);
 const DELIVERY_STEPS = ['Đã nhận đơn', 'Đang chuẩn bị món', 'Tài xế đang đến', 'Đã giao'];
@@ -110,6 +111,17 @@ function Demo() {
     say('run ended');
   };
 
+  // Same flow as a run-tracking screen: foreground service starts in the idle phase when the map opens.
+  const startGoalRun = async (style: 'auto' | 'standard' = 'auto') => {
+    await requestNotificationPermission();
+    if (Platform.OS === 'android') await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+    await GoalRun.start(
+      { phase: 'idle', startAt: 0, distanceKm: 0, pace: '--', goalKm: 5 },
+      { inApp: false, androidForegroundService: 'location', androidNotificationStyle: style },
+    );
+    say(`goal run (idle, foreground service, ${style}) started`);
+  };
+
   const runUpload = async () => {
     upload.current = await Upload.start({ file: 'bao-cao-q3.pdf', progress: 0 });
     say('upload started');
@@ -123,7 +135,7 @@ function Demo() {
   };
 
   // Scriptable demo: `xcrun simctl openurl booted liveisland://demo/delivery` (or `adb shell am start -d …`).
-  const actions: Record<string, () => unknown> = { delivery: advanceDelivery, music: toggleMusic, run: toggleRun, runend: endRun, upload: runUpload, end: endAllActivities };
+  const actions: Record<string, () => unknown> = { delivery: advanceDelivery, music: toggleMusic, run: toggleRun, runend: endRun, goalrun: () => startGoalRun('auto'), goalstd: () => startGoalRun('standard'), upload: runUpload, end: endAllActivities };
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
   useEffect(() => {
@@ -146,6 +158,7 @@ function Demo() {
         <Text style={styles.subtitle}>
           Native: {enabled ? `enabled (${getNativeActivities().filter((a) => a.state === 'active').length} active)` : 'unavailable (in-app island only)'} · {Platform.OS}
           {Platform.OS === 'android' ? ` · overlay ${hasOverlayPermission() ? 'granted' : 'not granted'}` : ''}
+          {Platform.OS === 'android' ? ` · custom views ${getAndroidNotificationHealth().customViews}` : ''}
         </Text>
 
         <View style={styles.grid}>

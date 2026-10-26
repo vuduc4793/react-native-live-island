@@ -201,6 +201,10 @@ App tự khai báo quyền cho loại service mình dùng, thư viện không kh
 - Người dùng vuốt app khỏi đa nhiệm hoặc process bị kill: service dừng, notification biến mất. Lần mở app sau, thư viện dọn các notification mồ côi còn sót.
 - Trong lúc service chạy, thư viện giữ một headless JS task (`LiveIslandKeepAlive`, đã tự đăng ký), nên `setInterval`/`setTimeout` của JS vẫn chạy khi tắt màn hình. Bình thường React Native dừng timer khi app ở nền.
 - Người dùng vuốt bỏ notification của service (Android 14+ cho phép): thư viện đăng lại.
+- **Notification custom không bao giờ được làm chết app.** Nếu SystemUI không dựng được notification của một foreground service, Android giết app; với notification thường thì nó chỉ lặng lẽ bỏ đi. Vì vậy thư viện:
+  - dựng thử RemoteViews ngay trong app trước mỗi lần đăng. Lần thử này chạy cùng code framework mà SystemUI dùng trên máy đó; lỗi thì dùng **notification chuẩn** (tiêu đề, nội dung, đồng hồ, thanh tiến độ, suy ra từ template);
+  - nhớ máy nào từng chết khi đang đăng notification custom (ROM hãng). Từ đó notification foreground trên máy ấy dùng kiểu chuẩn cho tới khi app đổi version. JS đọc trạng thái bằng `getAndroidNotificationHealth()` → `{ customViews: 'allowed' | 'blocked', reason }`;
+  - muốn luôn dùng kiểu chuẩn thì đặt `androidNotificationStyle: 'standard'` (trong `start()` hoặc `configure()`).
 - Trên iOS tham số này bị bỏ qua. Để GPS chạy nền trên iOS, app cần `UIBackgroundModes` → `location`, như mọi app chạy bộ.
 
 ## Mẹo layout

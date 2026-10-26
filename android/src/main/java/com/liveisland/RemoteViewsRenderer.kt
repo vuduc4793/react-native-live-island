@@ -135,14 +135,49 @@ class RemoteViewsRenderer(private val context: Context, private val defaultTextC
     return span
   }
 
+  // TextView.setGravity is only a RemoteViews method from API 31; calling it on older Android makes
+  // SystemUI reject the notification ("Couldn't inflate contentViews"), which kills the app when it is
+  // a foreground service notification. Alignment therefore comes from layout variants instead.
+  private enum class Align { START, CENTER, END }
+
+  private fun align(node: WireNode): Align {
+    val horizontal = textGravity(node) and Gravity.HORIZONTAL_GRAVITY_MASK
+    return when (horizontal) {
+      Gravity.START, Gravity.LEFT -> Align.START
+      Gravity.END, Gravity.RIGHT -> Align.END
+      else -> Align.CENTER
+    }
+  }
+
+  private fun textLayout(node: WireNode, parent: Parent): Int {
+    val a = align(node)
+    return variant(
+      node,
+      parent,
+      wrap = when (a) { Align.START -> R.layout.di_rv_tx_s; Align.CENTER -> R.layout.di_rv_tx_c; Align.END -> R.layout.di_rv_tx_e },
+      fullWidth = when (a) { Align.START -> R.layout.di_rv_tx_fw_s; Align.CENTER -> R.layout.di_rv_tx_fw_c; Align.END -> R.layout.di_rv_tx_fw_e },
+      weighted = when (a) { Align.START -> R.layout.di_rv_tx_wt_s; Align.CENTER -> R.layout.di_rv_tx_wt_c; Align.END -> R.layout.di_rv_tx_wt_e },
+    )
+  }
+
+  private fun timerLayout(node: WireNode, parent: Parent): Int {
+    val a = align(node)
+    return variant(
+      node,
+      parent,
+      wrap = when (a) { Align.START -> R.layout.di_rv_tm_s; Align.CENTER -> R.layout.di_rv_tm_c; Align.END -> R.layout.di_rv_tm_e },
+      fullWidth = when (a) { Align.START -> R.layout.di_rv_tm_fw_s; Align.CENTER -> R.layout.di_rv_tm_fw_c; Align.END -> R.layout.di_rv_tm_fw_e },
+      weighted = when (a) { Align.START -> R.layout.di_rv_tm_wt_s; Align.CENTER -> R.layout.di_rv_tm_wt_c; Align.END -> R.layout.di_rv_tm_wt_e },
+    )
+  }
+
   private fun textStyle(views: RemoteViews, node: WireNode) {
     views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, node.float("fs") ?: 15f)
     (node.color("fc") ?: defaultTextColor)?.let { views.setTextColor(id, it) }
-    views.setInt(id, "setGravity", textGravity(node))
   }
 
   private fun text(node: WireNode, parent: Parent): RemoteViews {
-    val views = RemoteViews(pkg, variant(node, parent, R.layout.di_rv_tx, R.layout.di_rv_tx_fw, R.layout.di_rv_tx_wt))
+    val views = RemoteViews(pkg, textLayout(node, parent))
     views.setTextViewText(id, styledText(node))
     textStyle(views, node)
     node.dbl("ln")?.toInt()?.let { views.setInt(id, "setMaxLines", it) }
@@ -150,7 +185,7 @@ class RemoteViewsRenderer(private val context: Context, private val defaultTextC
   }
 
   private fun timer(node: WireNode, parent: Parent): RemoteViews {
-    val views = RemoteViews(pkg, variant(node, parent, R.layout.di_rv_tm, R.layout.di_rv_tm_fw, R.layout.di_rv_tm_wt))
+    val views = RemoteViews(pkg, timerLayout(node, parent))
     val now = System.currentTimeMillis()
     val elapsed = SystemClock.elapsedRealtime()
     val end = node.dbl("e")
@@ -219,8 +254,9 @@ class RemoteViewsRenderer(private val context: Context, private val defaultTextC
       views.setViewPadding(id, context.dp(p[3]), context.dp(p[0]), context.dp(p[1]), context.dp(p[2]))
     }
     node.color("bg")?.let { views.setInt(id, "setBackgroundColor", it) }
-    node.float("o")?.let { views.setFloat(id, "setAlpha", it) }
     if (Build.VERSION.SDK_INT >= 31) {
+      // View.setAlpha is not a RemoteViews method before API 31 either (see textLayout()).
+      node.float("o")?.let { views.setFloat(id, "setAlpha", it) }
       node.float("r")?.let { views.setViewOutlinePreferredRadius(id, it, TypedValue.COMPLEX_UNIT_DIP) }
       if (node.t != "ic" && node.t != "im" && !(node.t == "pg" && node.str("k") == "ring")) {
         node.float("w")?.let { views.setViewLayoutWidth(id, it, TypedValue.COMPLEX_UNIT_DIP) }
